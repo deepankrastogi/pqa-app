@@ -1,0 +1,168 @@
+import React, { useEffect, useRef, useCallback } from 'react';
+import { useVideoCamera } from '@/hooks/useVideoCamera';
+import { useFoodDetection } from '@/hooks/useFoodDetection';
+import { Loader2 } from 'lucide-react';
+
+interface LiveCameraViewProps {
+  onCapture: (photoDataUrl: string) => void;
+  isCapturing: boolean;
+}
+
+const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing }) => {
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const {
+    videoRef,
+    canvasRef,
+    isStreaming,
+    error,
+    startCamera,
+    capturePhoto,
+  } = useVideoCamera();
+
+  const {
+    isModelLoading,
+    detections,
+    modelError,
+    startDetection,
+    stopDetection,
+    drawDetections,
+  } = useFoodDetection();
+
+  // Start camera on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      stopDetection();
+    };
+  }, [startCamera, stopDetection]);
+
+  // Start detection when streaming begins and model is ready
+  useEffect(() => {
+    if (isStreaming && !isModelLoading && videoRef.current) {
+      startDetection(videoRef.current);
+    }
+  }, [isStreaming, isModelLoading, startDetection, videoRef]);
+
+  // Draw detections on overlay canvas
+  useEffect(() => {
+    if (!overlayCanvasRef.current || !videoRef.current) return;
+    
+    const overlay = overlayCanvasRef.current;
+    const video = videoRef.current;
+    const ctx = overlay.getContext('2d');
+    
+    if (!ctx) return;
+    
+    // Calculate scale factors
+    const scaleX = overlay.width / video.videoWidth;
+    const scaleY = overlay.height / video.videoHeight;
+    
+    drawDetections(ctx, detections, scaleX, scaleY);
+  }, [detections, drawDetections, videoRef]);
+
+  // Resize overlay canvas to match container
+  useEffect(() => {
+    const handleResize = () => {
+      if (!overlayCanvasRef.current || !containerRef.current) return;
+      
+      const container = containerRef.current;
+      overlayCanvasRef.current.width = container.clientWidth;
+      overlayCanvasRef.current.height = container.clientHeight;
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isStreaming]);
+
+  const handleCapture = useCallback(() => {
+    const photo = capturePhoto();
+    if (photo) {
+      onCapture(photo);
+    }
+  }, [capturePhoto, onCapture]);
+
+  // Expose capture function to parent via callback
+  useEffect(() => {
+    if (isCapturing) {
+      handleCapture();
+    }
+  }, [isCapturing, handleCapture]);
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-muted/50 p-6">
+        <div className="text-center space-y-4">
+          <p className="text-lg text-destructive">{error}</p>
+          <button 
+            onClick={startCamera}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="flex-1 relative bg-black overflow-hidden">
+      {/* Video stream */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Detection overlay canvas */}
+      <canvas
+        ref={overlayCanvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+      />
+      
+      {/* Loading states */}
+      {(!isStreaming || isModelLoading) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
+            <p className="text-white text-sm">
+              {!isStreaming ? 'Starting camera...' : 'Loading AI detection...'}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Model error warning (non-blocking) */}
+      {modelError && isStreaming && (
+        <div className="absolute top-4 left-4 right-4 bg-warning/90 text-warning-foreground px-3 py-2 rounded-lg text-sm">
+          {modelError}
+        </div>
+      )}
+      
+      {/* Detection indicator */}
+      {isStreaming && !isModelLoading && !modelError && (
+        <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          AI Detection Active
+          {detections.length > 0 && (
+            <span className="bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+              {detections.length} found
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LiveCameraView;

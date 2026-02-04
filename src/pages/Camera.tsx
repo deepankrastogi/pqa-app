@@ -1,13 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCamera } from '@/hooks/useCamera';
 import { usePhotoQueue } from '@/hooks/usePhotoQueue';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import LiveCameraView from '@/components/LiveCameraView';
 import { 
   Camera as CameraIcon, 
-  X, 
   Check, 
   RefreshCw, 
   LogOut,
@@ -20,20 +19,23 @@ import {
 const CameraPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { capturedPhoto, isCapturing, error, takePhoto, clearPhoto } = useCamera();
   const { pendingCount, isOnline, isSyncing, addToQueue } = usePhotoQueue();
-
-  // Auto-launch camera on mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      takePhoto();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+  
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/', { replace: true });
+  };
+
+  const handlePhotoCapture = useCallback((photoDataUrl: string) => {
+    setCapturedPhoto(photoDataUrl);
+    setIsCapturing(false);
+  }, []);
+
+  const handleCaptureClick = () => {
+    setIsCapturing(true);
   };
 
   const handleSubmit = () => {
@@ -44,15 +46,13 @@ const CameraPage: React.FC = () => {
         userId: user.id,
       });
       
-      // Immediately clear and retake - instant flow
-      clearPhoto();
-      takePhoto();
+      // Clear and return to live camera
+      setCapturedPhoto(null);
     }
   };
 
   const handleRetake = () => {
-    clearPhoto();
-    takePhoto();
+    setCapturedPhoto(null);
   };
 
   // Preview mode - show captured photo
@@ -63,7 +63,7 @@ const CameraPage: React.FC = () => {
         <div className="flex-1 relative">
           <img
             src={capturedPhoto}
-            alt="Captured pizza"
+            alt="Captured food"
             className="w-full h-full object-contain bg-black"
           />
         </div>
@@ -94,11 +94,11 @@ const CameraPage: React.FC = () => {
     );
   }
 
-  // Camera mode - ready to capture
+  // Camera mode - live view with detection
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
       {/* Top Bar */}
-      <div className="safe-area-top bg-card/80 backdrop-blur-sm border-b border-border">
+      <div className="safe-area-top bg-card/80 backdrop-blur-sm border-b border-border z-10">
         <div className="flex items-center justify-between p-3">
           {/* Store Badge */}
           <Badge variant="secondary" className="text-sm font-mono">
@@ -147,36 +147,17 @@ const CameraPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Camera View Placeholder */}
-      <div className="flex-1 flex items-center justify-center bg-muted/50">
-        <div className="text-center p-6">
-          {error ? (
-            <div className="space-y-4">
-              <X className="h-16 w-16 mx-auto text-destructive" />
-              <p className="text-lg text-muted-foreground">{error}</p>
-              <Button onClick={takePhoto} variant="secondary">
-                Try Again
-              </Button>
-            </div>
-          ) : isCapturing ? (
-            <div className="space-y-4">
-              <Loader2 className="h-16 w-16 mx-auto text-primary animate-spin" />
-              <p className="text-lg text-muted-foreground">Opening camera...</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <CameraIcon className="h-16 w-16 mx-auto text-muted-foreground" />
-              <p className="text-lg text-muted-foreground">Tap the button below to capture</p>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Live Camera View with Detection */}
+      <LiveCameraView 
+        onCapture={handlePhotoCapture}
+        isCapturing={isCapturing}
+      />
 
       {/* Capture Button */}
-      <div className="safe-area-bottom bg-card/80 backdrop-blur-sm border-t border-border p-6">
+      <div className="safe-area-bottom bg-card/80 backdrop-blur-sm border-t border-border p-6 z-10">
         <div className="flex justify-center">
           <button
-            onClick={takePhoto}
+            onClick={handleCaptureClick}
             disabled={isCapturing}
             className="relative w-20 h-20 rounded-full bg-primary flex items-center justify-center
                        transition-all duration-200 active:scale-95 disabled:opacity-50
