@@ -1,14 +1,20 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useVideoCamera } from '@/hooks/useVideoCamera';
-import { useFoodDetection } from '@/hooks/useFoodDetection';
+import { useDetectionOverlay, Detection } from '@/hooks/useDetectionOverlay';
 import { Loader2 } from 'lucide-react';
 
 interface LiveCameraViewProps {
   onCapture: (photoDataUrl: string) => void;
   isCapturing: boolean;
+  /** Detection results from your backend API */
+  detections?: Detection[];
 }
 
-const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing }) => {
+const LiveCameraView: React.FC<LiveCameraViewProps> = ({ 
+  onCapture, 
+  isCapturing,
+  detections = [] 
+}) => {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -21,14 +27,7 @@ const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing 
     capturePhoto,
   } = useVideoCamera();
 
-  const {
-    isModelLoading,
-    detections,
-    modelError,
-    startDetection,
-    stopDetection,
-    drawDetections,
-  } = useFoodDetection();
+  const { drawDetections } = useDetectionOverlay();
 
   // Start camera on mount
   useEffect(() => {
@@ -37,20 +36,12 @@ const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing 
     }, 300);
     return () => {
       clearTimeout(timer);
-      stopDetection();
     };
-  }, [startCamera, stopDetection]);
+  }, [startCamera]);
 
-  // Start detection when streaming begins and model is ready
+  // Draw detections on overlay canvas when detections change
   useEffect(() => {
-    if (isStreaming && !isModelLoading && videoRef.current) {
-      startDetection(videoRef.current);
-    }
-  }, [isStreaming, isModelLoading, startDetection, videoRef]);
-
-  // Draw detections on overlay canvas
-  useEffect(() => {
-    if (!overlayCanvasRef.current || !videoRef.current) return;
+    if (!overlayCanvasRef.current || !videoRef.current || !isStreaming) return;
     
     const overlay = overlayCanvasRef.current;
     const video = videoRef.current;
@@ -59,11 +50,11 @@ const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing 
     if (!ctx) return;
     
     // Calculate scale factors
-    const scaleX = overlay.width / video.videoWidth;
-    const scaleY = overlay.height / video.videoHeight;
+    const scaleX = overlay.width / (video.videoWidth || 1);
+    const scaleY = overlay.height / (video.videoHeight || 1);
     
     drawDetections(ctx, detections, scaleX, scaleY);
-  }, [detections, drawDetections, videoRef]);
+  }, [detections, drawDetections, videoRef, isStreaming]);
 
   // Resize overlay canvas to match container
   useEffect(() => {
@@ -87,7 +78,7 @@ const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing 
     }
   }, [capturePhoto, onCapture]);
 
-  // Expose capture function to parent via callback
+  // Trigger capture when isCapturing changes
   useEffect(() => {
     if (isCapturing) {
       handleCapture();
@@ -130,33 +121,24 @@ const LiveCameraView: React.FC<LiveCameraViewProps> = ({ onCapture, isCapturing 
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
       
-      {/* Loading states */}
-      {(!isStreaming || isModelLoading) && (
+      {/* Loading state */}
+      {!isStreaming && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80">
           <div className="text-center space-y-3">
             <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
-            <p className="text-white text-sm">
-              {!isStreaming ? 'Starting camera...' : 'Loading AI detection...'}
-            </p>
+            <p className="text-white text-sm">Starting camera...</p>
           </div>
         </div>
       )}
       
-      {/* Model error warning (non-blocking) */}
-      {modelError && isStreaming && (
-        <div className="absolute top-4 left-4 right-4 bg-warning/90 text-warning-foreground px-3 py-2 rounded-lg text-sm">
-          {modelError}
-        </div>
-      )}
-      
-      {/* Detection indicator */}
-      {isStreaming && !isModelLoading && !modelError && (
+      {/* Detection status indicator */}
+      {isStreaming && (
         <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          AI Detection Active
+          Camera Ready
           {detections.length > 0 && (
             <span className="bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-              {detections.length} found
+              {detections.length} detected
             </span>
           )}
         </div>
