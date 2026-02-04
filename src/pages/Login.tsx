@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Pizza, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import dominosLogo from '@/assets/dominos-logo.png';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -61,8 +62,8 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 safe-area-top safe-area-bottom">
       <Card className="w-full max-w-sm border-border bg-card">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Pizza className="h-8 w-8 text-primary" />
+          <div className="mx-auto mb-4">
+            <img src={dominosLogo} alt="Domino's Logo" className="h-20 w-auto" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Pizza Analyzer</h1>
           <p className="text-sm text-muted-foreground">Quality training made simple</p>
