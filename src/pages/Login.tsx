@@ -41,22 +41,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setEmail('demo@demo.com');
-    setPassword('demo');
-    setIsLoading(true);
-    
-    try {
-      const success = await login('demo@demo.com', 'demo');
-      if (success) {
-        navigate('/camera', { replace: true });
-      }
-    } catch {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 safe-area-top safe-area-bottom">
@@ -115,31 +99,6 @@ const Login: React.FC = () => {
               )}
             </Button>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full h-12 mt-4 text-base"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-            >
-              Try Demo
-            </Button>
-          </div>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            SSO integration ready • Contact IT for access
-          </p>
         </CardContent>
       </Card>
     </div>
