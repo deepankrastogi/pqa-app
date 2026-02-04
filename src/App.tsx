@@ -49,10 +49,10 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-// Force dark mode for the app
-const DarkModeEnforcer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Force light mode for the app
+const LightModeEnforcer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('dark');
   }, []);
 
   return <>{children}</>;
@@ -63,7 +63,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <DarkModeEnforcer>
+      <LightModeEnforcer>
         <AuthProvider>
           <BrowserRouter>
             <Routes>
@@ -88,7 +88,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </AuthProvider>
-      </DarkModeEnforcer>
+      </LightModeEnforcer>
     </TooltipProvider>
   </QueryClientProvider>
 );
