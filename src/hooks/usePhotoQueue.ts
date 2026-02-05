@@ -15,6 +15,7 @@ interface UsePhotoQueueReturn {
   isOnline: boolean;
   isSyncing: boolean;
   addToQueue: (photo: Omit<QueuedPhoto, 'id' | 'timestamp' | 'retryCount'>) => void;
+  retryAll: () => void;
 }
 
 const QUEUE_STORAGE_KEY = 'pizza-analyzer-photo-queue';
@@ -130,11 +131,17 @@ export const usePhotoQueue = (): UsePhotoQueueReturn => {
     setQueue(prev => [...prev, newPhoto]);
   }, []);
 
+  const retryAll = useCallback(() => {
+    // Reset retry counts to give all photos a fresh chance
+    setQueue(prev => prev.map(photo => ({ ...photo, retryCount: 0 })));
+  }, []);
+
   return {
     queue,
     pendingCount: queue.length,
     isOnline,
     isSyncing,
     addToQueue,
+    retryAll,
   };
 };

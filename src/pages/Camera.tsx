@@ -5,6 +5,7 @@ import { usePhotoQueue } from '@/hooks/usePhotoQueue';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import LiveCameraView from '@/components/LiveCameraView';
+import PendingPhotosSheet from '@/components/PendingPhotosSheet';
 import { 
   Camera as CameraIcon, 
   Check, 
@@ -19,7 +20,7 @@ import {
 const CameraPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { pendingCount, isOnline, isSyncing, addToQueue } = usePhotoQueue();
+  const { queue, pendingCount, isOnline, isSyncing, addToQueue, retryAll } = usePhotoQueue();
   
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -107,11 +108,16 @@ const CameraPage: React.FC = () => {
 
           {/* Status Indicators */}
           <div className="flex items-center gap-2">
-            {/* Pending uploads indicator */}
-            {pendingCount > 0 && (
+            {/* Pending uploads indicator - tappable */}
+            <PendingPhotosSheet
+              queue={queue}
+              pendingCount={pendingCount}
+              isSyncing={isSyncing}
+              onRetryAll={retryAll}
+            >
               <Badge 
                 variant="outline" 
-                className="gap-1 text-warning border-warning/50"
+                className="gap-1 text-warning border-warning/50 cursor-pointer hover:bg-warning/10 transition-colors"
               >
                 {isSyncing ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -120,7 +126,7 @@ const CameraPage: React.FC = () => {
                 )}
                 {pendingCount}
               </Badge>
-            )}
+            </PendingPhotosSheet>
 
             {/* Online/Offline indicator */}
             <Badge 
